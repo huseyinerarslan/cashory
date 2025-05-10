@@ -1,0 +1,628 @@
+
+<!DOCTYPE html>
+
+<html lang="tr">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Cashory</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;400&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+    body { font-family: 'Inter', sans-serif; background-color: #f2f4f7; margin: 0; padding: 0; }
+    .container { max-width: 480px; margin: auto; padding: 1rem; }
+    header { text-align: center; margin-bottom: 1rem; }
+    h1 { font-size: 1.75rem; color: #333; }
+    .form-card, .expense-list {
+      background: white; border-radius: 1rem;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.05); padding: 1rem; margin-bottom: 1rem;
+    }
+    input, select, button.save {
+      width: 100%; padding: 0.5rem; margin: 0.5rem 0;
+      border: 1px solid #ccc; border-radius: 0.5rem;
+    }
+    button.save {
+      background-color: #007bff; color: white; font-weight: 600;
+    }
+    table { width: 100%; border-collapse: collapse; }
+    th, td {
+      padding: 0.5rem; text-align: left; border-bottom: 1px solid #ddd;
+    }
+    th { background-color: #f9fafb; font-weight: 600; }
+    td button { margin-right: 0.25rem; }
+    .charts { display: flex; flex-wrap: wrap; gap: 1rem; justify-content: center; }
+    .chart-container {
+      flex: 1 1 45%; background: white; border-radius: 1rem;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05); padding: 1rem;
+    }
+    .geri-al{
+          border: 0;
+    background: none;
+    }
+  
+/* Tablolar için daha zarif scroll */
+.table-wrapper {
+  overflow-x: auto;
+}
+
+/* Tabloların yazı boyutu ve satır boşlukları */
+.expense-list table {
+  font-size: 0.9rem;
+}
+th, td {
+  padding: 0.4rem;
+}
+
+/* Sadece .save butonu ve .geri-al özel */
+button.save {
+  background-color: #4f46e5;
+  color: white;
+  font-weight: 600;
+  border: none;
+  border-radius: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  cursor: pointer;
+  transition: background 0.3s ease;
+}
+button.save:hover {
+  background-color: #3730a3;
+}
+
+/* İkincil ikon buton stili */
+td button {
+  background: transparent;
+  border: none;
+  padding: 0.25rem;
+  border-radius: 0.25rem;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+td button:hover {
+  background: rgba(55, 52, 252, 0.1);
+}
+  .logo-container {
+    text-align: center;
+    padding: 0rem 1rem;
+  }
+
+  .logo-text {
+    font-family: 'Poppins', sans-serif;
+    font-size: 3.5rem;
+    font-weight: 600;
+    color: #27ae60; /* "Cash" rengi */
+  }
+
+  .logo-text span {
+    color: #2c3e50; /* "ory" rengi */
+  }
+
+  .slogan {
+    margin-top: 0.5rem;
+    font-family: 'Poppins', sans-serif;
+    font-weight: 400;
+    font-size: 1rem;
+    color: #7f8c8d; /* Hafif gri, zarif görünüm */
+    letter-spacing: 0.5px;
+  }
+
+</style>
+</head>
+<body>
+<div class="container">
+<header>
+<div class="logo-container">
+  <div class="logo-text">Cash<span>ory</span></div>
+  <div class="slogan">Nakitin Akıllı Yolu</div>
+</div>
+<p id="current-month"></p>
+<div id="reminder-message" style="background: #fff3cd; padding: 1rem; border-radius: 0.5rem; margin-bottom: 1rem; display: none;"></div>
+</header>
+<div class="form-card">
+<h2>➕ Yeni Gider Ekle</h2>
+<select id="expense-type">
+<option value="routine">Rutin</option>
+<option value="debt">Borç</option>
+<option value="extra">Ekstra</option>
+</select>
+<input id="expense-name" placeholder="Gider Adı" type="text"/>
+<input id="expense-amount" placeholder="Tutar (TL)" type="number"/>
+<input id="installments" placeholder="Taksit Sayısı (varsa)" type="number"/>
+<button class="save" onclick="addExpense()">Kaydet</button>
+<p id="save-message"></p>
+</div>
+<div class="expense-list">
+<h2>🏠 Rutin Giderler</h2>
+<div class="table-wrapper"><table>
+<thead><tr><th>Ad</th><th>Tutar</th><th>İşlemler</th></tr></thead>
+<tbody id="routine-list"></tbody>
+</table></div>
+<p><strong>Toplam:</strong> <span id="routine-total">0 TL</span></p>
+</div>
+<div class="expense-list">
+<h2>📦 Ekstra Harcamalar</h2>
+<div class="table-wrapper"><table>
+<thead><tr><th>Ad</th><th>Toplam</th><th>Ödenen</th><th>Kalan</th><th>Taksit</th><th>İşlem</th></tr></thead>
+<tbody id="extra-list"></tbody>
+</table></div>
+<p><strong>Toplam:</strong> <span id="extra-total">0 TL</span></p>
+</div>
+<div class="expense-list">
+<h2>💳 Borçlar</h2>
+<div class="table-wrapper"><table>
+<thead><tr><th>Ad</th><th>Toplam</th><th>Ödenen</th><th>Kalan</th><th>Taksit</th><th>İşlem</th></tr></thead>
+<tbody id="debt-list"></tbody>
+</table></div>
+<p><strong>Toplam:</strong> <span id="debt-total">0 TL</span></p>
+</div>
+<div class="charts">
+<div class="chart-container"><canvas id="routineChart"></canvas></div>
+<div class="chart-container"><canvas id="debtExtraChart"></canvas></div>
+</div>
+</div>
+<script>
+const now = new Date();
+const debtPaymentKey = `debtPayments_${now.getFullYear()}_${now.getMonth()}`;
+const debtPayments = JSON.parse(localStorage.getItem(debtPaymentKey)) || {};
+let expenses = JSON.parse(localStorage.getItem('expenses')) || [];
+let editIndex = null;
+
+document.getElementById("current-month").textContent = now.toLocaleString('tr-TR', { month: 'long', year: 'numeric' });
+
+function saveExpenses() {
+  localStorage.setItem('expenses', JSON.stringify(expenses));
+}
+
+function addExpense() {
+  const type = document.getElementById('expense-type').value;
+  const name = document.getElementById('expense-name').value.trim();
+  const amount = parseFloat(document.getElementById('expense-amount').value);
+  const installments = parseInt(document.getElementById('installments').value) || 0;
+  if (!name || isNaN(amount)) return;
+  if (editIndex !== null) {
+    expenses[editIndex] = { type, name, amount, installments };
+    editIndex = null;
+  } else {
+    expenses.push({ type, name, amount, installments });
+  }
+  document.getElementById('expense-name').value = '';
+  document.getElementById('expense-amount').value = '';
+  document.getElementById('installments').value = '';
+  saveExpenses();
+  
+function undoDebtPayment(name) {
+  if (!debtPayments[name] || debtPayments[name].length === 0) {
+    alert("Geri alınacak ödeme yok.");
+    return;
+  }
+  debtPayments[name].pop();
+  localStorage.setItem(debtPaymentKey, JSON.stringify(debtPayments));
+  alert(`'${name}' için son ödeme geri alındı.`);
+  renderAll();
+}
+
+renderAll();
+
+function getRoutinePaymentKey(name) {
+  const today = new Date();
+  return `routinePaid_${today.getFullYear()}_${today.getMonth()}_${name}`;
+}
+
+function resetRoutinePayment(name) {
+  const key = getRoutinePaymentKey(name);
+  localStorage.removeItem(key);
+  alert(`Tamamdır, '${name}' ödemesi bu ay için sıfırlandı.`);
+  showRoutineReminderMessages(); // Güncellenmiş mesajı göster
+}
+
+function showRoutineReminderMessages() {
+  const reminderBox = document.getElementById('reminder-message');
+  const routineExpenses = expenses.filter(e => e.type === 'routine');
+  let content = '';
+  let anyReminder = false;
+
+  routineExpenses.forEach(exp => {
+    const key = getRoutinePaymentKey(exp.name);
+    const paid = localStorage.getItem(key);
+
+    if (paid === 'true') {
+      anyReminder = true;
+      content += `
+        ✅ Bu ay '${exp.name}' ödemesini yaptın. 
+        <button onclick="resetRoutinePayment('${exp.name}')">Geri Al</button><br>
+      `;
+    }
+  });
+
+  if (anyReminder) {
+    reminderBox.style.display = 'block';
+    reminderBox.innerHTML = content + `<em>Harika gidiyorsun! 💪</em>`;
+  } else {
+    reminderBox.style.display = 'none';
+  }
+}
+
+function routineReminder() {
+  const routineExpenses = expenses.filter(e => e.type === 'routine');
+  routineExpenses.forEach(exp => {
+    const key = getRoutinePaymentKey(exp.name);
+    const alreadyPaid = localStorage.getItem(key);
+    if (alreadyPaid) return;
+
+    const paid = confirm(`Bu ay '${exp.name}' giderini ödedin mi?`);
+    if (paid) {
+      const messages = [
+        "Oh mis gibi! 😎 Finansal özgürlüğe bir adım daha!",
+        "Evren seninle 🌀 çünkü faturalarla aran iyi!",
+        `Bu ayki ${exp.name} için helal olsun! 👏`,
+        "Bu bütçe işi sende, belli 🔥"
+      ];
+      alert(messages[Math.floor(Math.random() * messages.length)]);
+      localStorage.setItem(key, "true");
+    } else {
+      const messages = [
+        `Hadi ama... '${exp.name}' hala bekliyor 😬`,
+        `'${exp.name}' seni unutmamış, cüzdanı unutmamalıydın 😅`,
+        `'${exp.name}' için zaman daralıyor. Kaçma şansı yok!`,
+        `Ev sahibi mi, fatura mı? Hepsi sırayla gelecek... 🧾`
+      ];
+      alert(messages[Math.floor(Math.random() * messages.length)]);
+    }
+  });
+  showRoutineReminderMessages();
+}
+routineReminder();
+
+}
+
+function deleteExpense(index) {
+  expenses.splice(index, 1);
+  saveExpenses();
+  
+function undoDebtPayment(name) {
+  if (!debtPayments[name] || debtPayments[name].length === 0) {
+    alert("Geri alınacak ödeme yok.");
+    return;
+  }
+  debtPayments[name].pop();
+  localStorage.setItem(debtPaymentKey, JSON.stringify(debtPayments));
+  alert(`'${name}' için son ödeme geri alındı.`);
+  renderAll();
+}
+
+renderAll();
+
+function getRoutinePaymentKey(name) {
+  const today = new Date();
+  return `routinePaid_${today.getFullYear()}_${today.getMonth()}_${name}`;
+}
+
+function resetRoutinePayment(name) {
+  const key = getRoutinePaymentKey(name);
+  localStorage.removeItem(key);
+  alert(`Tamamdır, '${name}' ödemesi bu ay için sıfırlandı.`);
+  showRoutineReminderMessages(); // Güncellenmiş mesajı göster
+}
+
+function showRoutineReminderMessages() {
+  const reminderBox = document.getElementById('reminder-message');
+  const routineExpenses = expenses.filter(e => e.type === 'routine');
+  let content = '';
+  let anyReminder = false;
+
+  routineExpenses.forEach(exp => {
+    const key = getRoutinePaymentKey(exp.name);
+    const paid = localStorage.getItem(key);
+
+    if (paid === 'true') {
+      anyReminder = true;
+      content += `
+        ✅ Bu ay '${exp.name}' ödemesini yaptın. 
+        <button onclick="resetRoutinePayment('${exp.name}')">Geri Al</button><br>
+      `;
+    }
+  });
+
+  if (anyReminder) {
+    reminderBox.style.display = 'block';
+    reminderBox.innerHTML = content + `<em>Harika gidiyorsun! 💪</em>`;
+  } else {
+    reminderBox.style.display = 'none';
+  }
+}
+
+function routineReminder() {
+  const routineExpenses = expenses.filter(e => e.type === 'routine');
+  routineExpenses.forEach(exp => {
+    const key = getRoutinePaymentKey(exp.name);
+    const alreadyPaid = localStorage.getItem(key);
+    if (alreadyPaid) return;
+
+    const paid = confirm(`Bu ay '${exp.name}' giderini ödedin mi?`);
+    if (paid) {
+      const messages = [
+        "Oh mis gibi! 😎 Finansal özgürlüğe bir adım daha!",
+        "Evren seninle 🌀 çünkü faturalarla aran iyi!",
+        `Bu ayki ${exp.name} için helal olsun! 👏`,
+        "Bu bütçe işi sende, belli 🔥"
+      ];
+      alert(messages[Math.floor(Math.random() * messages.length)]);
+      localStorage.setItem(key, "true");
+    } else {
+      const messages = [
+        `Hadi ama... '${exp.name}' hala bekliyor 😬`,
+        `'${exp.name}' seni unutmamış, cüzdanı unutmamalıydın 😅`,
+        `'${exp.name}' için zaman daralıyor. Kaçma şansı yok!`,
+        `Ev sahibi mi, fatura mı? Hepsi sırayla gelecek... 🧾`
+      ];
+      alert(messages[Math.floor(Math.random() * messages.length)]);
+    }
+  });
+  showRoutineReminderMessages();
+}
+routineReminder();
+
+}
+
+function editExpense(index) {
+  const exp = expenses[index];
+  document.getElementById('expense-type').value = exp.type;
+  document.getElementById('expense-name').value = exp.name;
+  document.getElementById('expense-amount').value = exp.amount;
+  document.getElementById('installments').value = exp.installments || '';
+  editIndex = index;
+}
+
+function payDebt(name) {
+  const payment = prompt("Ne kadar ödedin?");
+  const num = parseFloat(payment);
+  if (!isNaN(num)) {
+    if (!debtPayments[name]) debtPayments[name] = [];
+    debtPayments[name].push(num);
+    localStorage.setItem(debtPaymentKey, JSON.stringify(debtPayments));
+    
+function undoDebtPayment(name) {
+  if (!debtPayments[name] || debtPayments[name].length === 0) {
+    alert("Geri alınacak ödeme yok.");
+    return;
+  }
+  debtPayments[name].pop();
+  localStorage.setItem(debtPaymentKey, JSON.stringify(debtPayments));
+  alert(`'${name}' için son ödeme geri alındı.`);
+  renderAll();
+}
+
+renderAll();
+
+function getRoutinePaymentKey(name) {
+  const today = new Date();
+  return `routinePaid_${today.getFullYear()}_${today.getMonth()}_${name}`;
+}
+
+function resetRoutinePayment(name) {
+  const key = getRoutinePaymentKey(name);
+  localStorage.removeItem(key);
+  alert(`Tamamdır, '${name}' ödemesi bu ay için sıfırlandı.`);
+  showRoutineReminderMessages(); // Güncellenmiş mesajı göster
+}
+
+function showRoutineReminderMessages() {
+  const reminderBox = document.getElementById('reminder-message');
+  const routineExpenses = expenses.filter(e => e.type === 'routine');
+  let content = '';
+  let anyReminder = false;
+
+  routineExpenses.forEach(exp => {
+    const key = getRoutinePaymentKey(exp.name);
+    const paid = localStorage.getItem(key);
+
+    if (paid === 'true') {
+      anyReminder = true;
+      content += `
+        ✅ Bu ay '${exp.name}' ödemesini yaptın. 
+        <button onclick="resetRoutinePayment('${exp.name}')">Geri Al</button><br>
+      `;
+    }
+  });
+
+  if (anyReminder) {
+    reminderBox.style.display = 'block';
+    reminderBox.innerHTML = content + `<em>Harika gidiyorsun! 💪</em>`;
+  } else {
+    reminderBox.style.display = 'none';
+  }
+}
+
+function routineReminder() {
+  const routineExpenses = expenses.filter(e => e.type === 'routine');
+  routineExpenses.forEach(exp => {
+    const key = getRoutinePaymentKey(exp.name);
+    const alreadyPaid = localStorage.getItem(key);
+    if (alreadyPaid) return;
+
+    const paid = confirm(`Bu ay '${exp.name}' giderini ödedin mi?`);
+    if (paid) {
+      const messages = [
+        "Oh mis gibi! 😎 Finansal özgürlüğe bir adım daha!",
+        "Evren seninle 🌀 çünkü faturalarla aran iyi!",
+        `Bu ayki ${exp.name} için helal olsun! 👏`,
+        "Bu bütçe işi sende, belli 🔥"
+      ];
+      alert(messages[Math.floor(Math.random() * messages.length)]);
+      localStorage.setItem(key, "true");
+    } else {
+      const messages = [
+        `Hadi ama... '${exp.name}' hala bekliyor 😬`,
+        `'${exp.name}' seni unutmamış, cüzdanı unutmamalıydın 😅`,
+        `'${exp.name}' için zaman daralıyor. Kaçma şansı yok!`,
+        `Ev sahibi mi, fatura mı? Hepsi sırayla gelecek... 🧾`
+      ];
+      alert(messages[Math.floor(Math.random() * messages.length)]);
+    }
+  });
+  showRoutineReminderMessages();
+}
+routineReminder();
+
+  }
+}
+
+function renderExpenses(type, listId, totalId) {
+  const list = document.getElementById(listId);
+  list.innerHTML = '';
+  let total = 0;
+  expenses.forEach((e, i) => {
+    if (e.type !== type) return;
+    const paid = (debtPayments[e.name] || []).reduce((a, b) => a + b, 0);
+    const remaining = Math.max(0, e.amount - paid);
+    const tr = document.createElement('tr');
+    if (type === 'routine') {
+      tr.innerHTML = `<td>${e.name}</td><td>${e.amount} TL</td>
+      <td><button onclick="editExpense(${i})">✏️</button><button onclick="deleteExpense(${i})">❌</button></td>`;
+      total += e.amount;
+    } else {
+      tr.innerHTML = `
+        <td>${e.name}</td>
+        <td>${e.amount} TL</td>
+        <td>${paid} TL</td>
+        <td>${remaining === 0 ? '✅' : remaining + ' TL'}</td>
+        <td>${e.installments || '-'}</td>
+        <td><button onclick="editExpense(${i})">✏️</button>
+<button onclick="deleteExpense(${i})">❌</button>
+<button onclick="payDebt('${e.name}')">💸</button>
+<button onclick="undoDebtPayment('${e.name}')">↩️</button></td>`;
+      total += remaining;
+    }
+    list.appendChild(tr);
+  });
+  document.getElementById(totalId).textContent = `${total} TL`;
+}
+
+function drawCharts() {
+  const routineData = expenses.filter(e => e.type === 'routine');
+  const debtExtraData = expenses.filter(e => e.type === 'debt' || e.type === 'extra');
+
+  if (window.routineChartInstance) window.routineChartInstance.destroy();
+  if (window.debtExtraChartInstance) window.debtExtraChartInstance.destroy();
+
+  const routineCtx = document.getElementById('routineChart').getContext('2d');
+  window.routineChartInstance = new Chart(routineCtx, {
+    type: 'pie',
+    data: {
+      labels: routineData.map(e => e.name),
+      datasets: [{ data: routineData.map(e => e.amount), backgroundColor: ['#FF6384','#36A2EB','#FFCE56','#6A89CC','#38ada9'] }]
+    }
+  });
+
+  const labels = [], data = [];
+  debtExtraData.forEach(e => {
+    const paid = (debtPayments[e.name] || []).reduce((a, b) => a + b, 0);
+    const remaining = Math.max(0, e.amount - paid);
+    if (remaining > 0) {
+      labels.push(e.name);
+      data.push(remaining);
+    }
+  });
+  const debtExtraCtx = document.getElementById('debtExtraChart').getContext('2d');
+  window.debtExtraChartInstance = new Chart(debtExtraCtx, {
+    type: 'pie',
+    data: {
+      labels: labels,
+      datasets: [{ data: data, backgroundColor: ['#e17055','#fdcb6e','#00b894','#0984e3','#6c5ce7'] }]
+    }
+  });
+}
+
+function renderAll() {
+  renderExpenses('routine', 'routine-list', 'routine-total');
+  renderExpenses('extra', 'extra-list', 'extra-total');
+  renderExpenses('debt', 'debt-list', 'debt-total');
+  drawCharts();
+}
+
+function undoDebtPayment(name) {
+  if (!debtPayments[name] || debtPayments[name].length === 0) {
+    alert("Geri alınacak ödeme yok.");
+    return;
+  }
+  debtPayments[name].pop();
+  localStorage.setItem(debtPaymentKey, JSON.stringify(debtPayments));
+  alert(`'${name}' için son ödeme geri alındı.`);
+  renderAll();
+}
+
+renderAll();
+
+function getRoutinePaymentKey(name) {
+  const today = new Date();
+  return `routinePaid_${today.getFullYear()}_${today.getMonth()}_${name}`;
+}
+
+function resetRoutinePayment(name) {
+  const key = getRoutinePaymentKey(name);
+  localStorage.removeItem(key);
+  alert(`Tamamdır, '${name}' ödemesi bu ay için sıfırlandı.`);
+  showRoutineReminderMessages(); // Güncellenmiş mesajı göster
+}
+
+function showRoutineReminderMessages() {
+  const reminderBox = document.getElementById('reminder-message');
+  const routineExpenses = expenses.filter(e => e.type === 'routine');
+  let content = '';
+  let anyReminder = false;
+
+  routineExpenses.forEach(exp => {
+    const key = getRoutinePaymentKey(exp.name);
+    const paid = localStorage.getItem(key);
+
+    if (paid === 'true') {
+      anyReminder = true;
+      content += `
+        ✅ Bu ay '${exp.name}' ödemesini yaptın. 
+        <button class="geri-al" onclick="resetRoutinePayment('${exp.name}')">↩️</button><br>
+      `;
+    }
+  });
+
+  if (anyReminder) {
+    reminderBox.style.display = 'block';
+    reminderBox.innerHTML = content + `<em>Harika gidiyorsun! 💪</em>`;
+  } else {
+    reminderBox.style.display = 'none';
+  }
+}
+
+function routineReminder() {
+  const routineExpenses = expenses.filter(e => e.type === 'routine');
+  routineExpenses.forEach(exp => {
+    const key = getRoutinePaymentKey(exp.name);
+    const alreadyPaid = localStorage.getItem(key);
+    if (alreadyPaid) return;
+
+    const paid = confirm(`Bu ay '${exp.name}' giderini ödedin mi?`);
+    if (paid) {
+      const messages = [
+        "Oh mis gibi! 😎 Finansal özgürlüğe bir adım daha!",
+        "Evren seninle 🌀 çünkü faturalarla aran iyi!",
+        `Bu ayki ${exp.name} için helal olsun! 👏`,
+        "Bu bütçe işi sende, belli 🔥"
+      ];
+      alert(messages[Math.floor(Math.random() * messages.length)]);
+      localStorage.setItem(key, "true");
+    } else {
+      const messages = [
+        `Hadi ama... '${exp.name}' hala bekliyor 😬`,
+        `'${exp.name}' seni unutmamış, cüzdanı unutmamalıydın 😅`,
+        `'${exp.name}' için zaman daralıyor. Kaçma şansı yok!`,
+        `Ev sahibi mi, fatura mı? Hepsi sırayla gelecek... 🧾`
+      ];
+      alert(messages[Math.floor(Math.random() * messages.length)]);
+    }
+  });
+  showRoutineReminderMessages();
+}
+routineReminder();
+
+</script>
+</body>
+</html>
